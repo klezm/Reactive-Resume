@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+
+  app:
+    # image: mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # env_file: "../.env.example"
+    # environment:
+    #   DISABLE_SIGNUPS: true
+    #   DISABLE_EMAIL_AUTH: true
+    #   STORAGE_SKIP_BUCKET_CHECK: false
+    #   PORT=3000
+    #   PUBLIC_URL=http://localhost:3000
+
+    volumes:
+      - ../..:/workspaces:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    # network_mode: service:db
+    network_mode: service:postgres
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+    # ports:
+    #   - 3000:3000
+    #   # - ${CHROME_PORT:-8080}:3000
+    #   - 9000:9000
+    depends_on:
+      - postgres
+      - minio
+      - chrome
+    # networks:
+    #   - default
+
+
+# https://github.com/AmruthPillai/Reactive-Resume/blob/e29f97388997064987bb9f48e25d42defdb0c661/compose-dev.yml
+
+# In this Docker Compose example, we only fire up the services required for local development.
+# This is not advised for production use as it exposes ports to the database insecurely.
+# If you're looking for a production-ready Docker Compose file, check out the `traefik.yml` file.
+
+
+  # Database (Postgres)
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # env_file: "../../.env.example"
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+      # - 3000:3000
+      # minio:
+      - ${STORAGE_PORT:-9000}:9000
+      # - "9001:9001" # Minio Console (Optional)
+      # chrome:
+      # - ${CHROME_PORT:-8080}:3000
+      # - ${CHROME_PORT:-8080}:3001
+      # - ${CHROME_PORT:-8080}:8080
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # network_mode: service:app
+    # networks:
+    #   - default
+
+  # Storage (for image uploads)
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    # env_file: "../../.env.example"
+    command: server /data
+    # ports:
+    #   - ${STORAGE_PORT:-9000}:9000
+    #   - "9001:9001" # Minio Console (Optional)
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ADDRESS: :9000
+      MINIO_CONSOLE_ADDRESS: :9001
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minioadmin}
+    # network_mode: service:app
+    network_mode: service:postgres
+    # networks:
+    #   - default
+
+  # Chrome Browser (for printing and previews)
+  chrome:
+    image: ghcr.io/browserless/chromium:latest
+    restart: unless-stopped
+    # env_file: "../../.env.example"
+    ports:
+      # - ${CHROME_PORT:-8080}:8080
+      - ${CHROME_PORT:-8080}:3000
+      # - ${CHROME_PORT:-8080}:3001
+    environment:
+      TIMEOUT: 10000
+      CONCURRENT: 10
+      TOKEN: ${CHROME_TOKEN:-chrome_token}
+      EXIT_ON_HEALTH_FAILURE: true
+      PRE_REQUEST_HEALTH_CHECK: true
+    # network_mode: service:postgres
+    # network_mode: service:app
+    # networks:
+    #   - default
+
+volumes:
+  minio_data:
+  postgres_data:
+
+# networks:
+#   # default:
+#   devNetwork:
+#     # driver: default
+#     # driver: overlay
+#     driver: bridge
+#     # driver_opts:
+#     #   com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
+
+
+
+
+#   db:
+#     image: postgres:latest
+#     restart: unless-stopped
+#     volumes:
+#       - postgres-data:/var/lib/postgresql/data
+#     environment:
+#       POSTGRES_PASSWORD: postgres
+#       POSTGRES_USER: postgres
+#       POSTGRES_DB: postgres
+
+#     # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
+#     # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+# volumes:
+#   postgres-data:

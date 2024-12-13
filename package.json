@@ -27,7 +27,10 @@
     "prisma:generate": "pnpm exec prisma generate",
     "prisma:migrate": "pnpm exec prisma migrate deploy",
     "prisma:migrate:dev": "pnpm exec prisma migrate dev",
-    "messages:extract": "pnpm exec lingui extract --clean --overwrite"
+    "messages:extract": "pnpm exec lingui extract --clean --overwrite",
+
+    "reset": "pnpm exec prisma migrate reset && pnpm exec prisma generate && rm -rf .nx dist node_modules",
+    "resetdb": "pnpm exec prisma migrate reset && pnpm exec prisma db push --force-reset --skip-generate"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -243,6 +246,7 @@
     "node": ">=20.13.1"
   },
   "prisma": {
+    "seed": "ts-node tools/prisma/seed.ts",
     "schema": "tools/prisma/schema.prisma"
   }
 }
